@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #FF4D00;
+  --color-brand-bg: #FFF9F5;
+  --color-brand-border: #FFD8C2;
+  --color-brand-dark: #2D2D2D;
+
+  /* Map the existing utility colors to support the "Vibrant Palette" theme directly and beautifully */
+  --color-emerald-50: #FFF0E6;
+  --color-emerald-100: #FFD8C2;
+  --color-emerald-200: #FFC09F;
+  --color-emerald-300: #FF9E66;
+  --color-emerald-400: #FF6C22;
+  --color-emerald-500: #FF4D00;
+  --color-emerald-600: #FF4D00;
+  --color-emerald-700: #D63F00;
+  --color-emerald-800: #2D2D2D;
+  --color-emerald-900: #1C1C1C;
+  --color-emerald-950: #121212;
+
+  --color-slate-50: #FFF9F5;
+  --color-slate-100: #FFF0E6;
+  --color-slate-200: #FFD8C2;
+  --color-slate-300: #FFC09F;
+  --color-slate-400: #737373;
+  --color-slate-500: #525252;
+  --color-slate-600: #404040;
+  --color-slate-800: #2D2D2D;
+  --color-slate-900: #1C1C1C;
+
+  --color-green-500: #22C55E;
+  --color-green-600: #16A34A;
+}
+
+/* Global design adjustments for the "Vibrant Palette" premium aesthetic */
+body {
+  background-color: #FFF9F5 !important;
+  color: #2D2D2D !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+#kaam-app-container {
+  background-color: #FFF9F5 !important;
+}
+
+/* Premium card borders, container outlines and smooth hover scaling */
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Adapt worker profiles to have nice vibrant borders */
+[id^="worker-card-"] {
+  border: 2px solid #FFD8C2 !important;
+  border-radius: 1.5rem !important; /* 24px matching rounded-3xl/2xl in theme design */
+  background-color: #ffffff !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[id^="worker-card-"]:hover {
+  border-color: #FF4D00 !important;
+  box-shadow: 0 10px 25px -5px rgba(255, 77, 0, 0.08), 0 8px 10px -6px rgba(255, 77, 0, 0.08) !important;
+  transform: translateY(-2px);
+}
+
+/* Active buttons and tabs */
+.bg-yellow-500 {
+  background-color: #FF4D00 !important;
+  color: #ffffff !important;
+}
+.bg-yellow-500:hover {
+  background-color: #D63F00 !important;
+}
+
+.text-yellow-400 {
+  color: #FFC09F !important;
+}
+
+.text-yellow-500 {
+  color: #FF4D00 !important;
+}
+
+/* Tab toggle container styling */
+.bg-slate-200\/70 {
+  background-color: #FFF0E6 !important;
+  border: 2px solid #FFD8C2 !important;
+}
+
+/* Skill selection buttons */
+button.bg-white.text-slate-700.border.border-slate-200 {
+  background-color: #ffffff !important;
+  border: 2px solid #FFD8C2 !important;
+  color: #2D2D2D !important;
+}
+button.bg-white.text-slate-700.border.border-slate-200:hover {
+  border-color: #FF4D00 !important;
+  background-color: #FFF0E6 !important;
+}
+
+/* Voice helper badge details */
+.bg-amber-500\/10 {
+  background-color: rgba(255, 77, 0, 0.08) !important;
+  border-color: #FF4D00 !important;
+  color: #FF4D00 !important;
+}
+
+.bg-amber-100 {
+  background-color: #FFF0E6 !important;
+  color: #FF4D00 !important;
+}
+
+.text-emerald-700, .text-emerald-800 {
+  color: #FF4D00 !important;
+}
+
+/* GPS Locator Card */
+#gps-locator-hud {
+  background: #FFF0E6 !important;
+  color: #2D2D2D !important;
+  border: 4px solid #2D2D2D !important;
+  box-shadow: 6px 6px 0px 0px #2D2D2D !important;
+}
+
+#gps-locator-hud h3, #gps-locator-hud p {
+  color: #2D2D2D !important;
+}
+
+#gps-locator-hud select {
+  background-color: #ffffff !important;
+  border: 2px solid #FFD8C2 !important;
+  color: #2D2D2D !important;
+}
+
+#gps-locator-hud select:focus {
+  border-color: #FF4D00 !important;
+}
+
+#gps-locator-hud .bg-emerald-950\/40 {
+  background-color: #ffffff !important;
+  border: 2px solid #FFD8C2 !important;
+}
+
+#gps-locator-hud .text-emerald-200 {
+  color: #FF4D00 !important;
+}
+
+#gps-locator-hud .bg-emerald-800 {
+  background-color: #FFF0E6 !important;
+}
+
+#gps-locator-hud .text-emerald-300 {
+  color: #737373 !important;
+}
+
+#gps-locator-hud .text-yellow-400 {
+  color: #FF4D00 !important;
+}
+
+#gps-locator-hud button {
+  background-color: #2D2D2D !important;
+  color: #ffffff !important;
+}
+
+#gps-locator-hud button:hover {
+  background-color: #121212 !important;
+}
+
+#gps-locator-hud .border-t.border-emerald-800 {
+  border-top: 2px dashed #FFD8C2 !important;
+}
+
+/* Voice instructions bar styling */
+.bg-emerald-800.text-white {
+  background-color: #FF4D00 !important;
+  border-bottom: 2px solid #2D2D2D !important;
+}
+
+.bg-emerald-800.text-white button.bg-yellow-500 {
+  background-color: #2D2D2D !important;
+  color: #ffffff !important;
+}
+
+.bg-emerald-800.text-white button.bg-yellow-500:hover {
+  background-color: #121212 !important;
+}
+
+/* Audio control buttons */
+button.text-emerald-700.hover:scale-110 {
+  background-color: #FFF0E6 !important;
+  color: #FF4D00 !important;
+}
+
+/* Footer layout matches the gorgeous palette */
+footer {
+  border-top: 4px solid #2D2D2D !important;
+  box-shadow: 0 -4px 15px rgba(255, 77, 0, 0.05) !important;
+}
