@@ -253,7 +253,11 @@ export default function App() {
 
   // Persist workers database to LocalStorage whenever altered
   useEffect(() => {
-    localStorage.setItem("kaam_workers", JSON.stringify(workers));
+    try {
+      localStorage.setItem("kaam_workers", JSON.stringify(workers));
+    } catch (e) {
+      console.warn("Storage quota limit reached for workers:", e);
+    }
   }, [workers]);
 
   // Job Database (State-managed with LocalStorage persistence)
@@ -271,7 +275,11 @@ export default function App() {
 
   // Persist jobs database to LocalStorage whenever altered
   useEffect(() => {
-    localStorage.setItem("kaam_jobs", JSON.stringify(jobs));
+    try {
+      localStorage.setItem("kaam_jobs", JSON.stringify(jobs));
+    } catch (e) {
+      console.warn("Storage quota limit reached for jobs:", e);
+    }
   }, [jobs]);
 
   // Supabase live database link state variables
@@ -694,7 +702,11 @@ export default function App() {
 
   // Persist assignments to local storage
   useEffect(() => {
-    localStorage.setItem("kaam_assignments", JSON.stringify(assignments));
+    try {
+      localStorage.setItem("kaam_assignments", JSON.stringify(assignments));
+    } catch (e) {
+      console.warn("Storage quota limit reached for assignments:", e);
+    }
   }, [assignments]);
 
   // Assign job modal state hooks
@@ -828,6 +840,42 @@ export default function App() {
         "success"
       );
     }, 2000);
+  };
+
+  const compressAndSetPhoto = (rawBase64: string, callback: (comp: string) => void) => {
+    const img = new Image();
+    img.src = rawBase64;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      // Target a high-quality thumbnail (150x150)
+      const targetSize = 150;
+      let w = img.width;
+      let h = img.height;
+      if (w > h) {
+        if (w > targetSize) {
+          h = Math.round((h * targetSize) / w);
+          w = targetSize;
+        }
+      } else {
+        if (h > targetSize) {
+          w = Math.round((w * targetSize) / h);
+          h = targetSize;
+        }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+        callback(compressedBase64);
+      } else {
+        callback(rawBase64);
+      }
+    };
+    img.onerror = () => {
+      callback(rawBase64);
+    };
   };
 
   const handleChooseLibraryPhoto = (avatarUrl: string) => {
@@ -1039,23 +1087,43 @@ export default function App() {
 
   // Persists
   useEffect(() => {
-    localStorage.setItem("kaam_profiles", JSON.stringify(profiles));
+    try {
+      localStorage.setItem("kaam_profiles", JSON.stringify(profiles));
+    } catch (e) {
+      console.warn("Storage quota limit reached for profiles:", e);
+    }
   }, [profiles]);
 
   useEffect(() => {
-    localStorage.setItem("kaam_login_records", JSON.stringify(loginRecords));
+    try {
+      localStorage.setItem("kaam_login_records", JSON.stringify(loginRecords));
+    } catch (e) {
+      console.warn("Storage quota limit reached for login records:", e);
+    }
   }, [loginRecords]);
 
   useEffect(() => {
-    localStorage.setItem("kaam_announcements", JSON.stringify(announcements));
+    try {
+      localStorage.setItem("kaam_announcements", JSON.stringify(announcements));
+    } catch (e) {
+      console.warn("Storage quota limit reached for announcements:", e);
+    }
   }, [announcements]);
 
   useEffect(() => {
-    localStorage.setItem("kaam_support_tickets", JSON.stringify(supportTickets));
+    try {
+      localStorage.setItem("kaam_support_tickets", JSON.stringify(supportTickets));
+    } catch (e) {
+      console.warn("Storage quota limit reached for support tickets:", e);
+    }
   }, [supportTickets]);
 
   useEffect(() => {
-    localStorage.setItem("kaam_audit_logs", JSON.stringify(auditLogs));
+    try {
+      localStorage.setItem("kaam_audit_logs", JSON.stringify(auditLogs));
+    } catch (e) {
+      console.warn("Storage quota limit reached for audit logs:", e);
+    }
   }, [auditLogs]);
 
   const handleToggleApprove = (id: string) => {
@@ -1403,7 +1471,7 @@ export default function App() {
 
   // --- Distance & Sorting & Filter Operations for App View ---
   const getWorkerCategoryDetails = (worker: Worker): Category[] => {
-    return CATEGORIES.filter(c => worker.skills.includes(c.id));
+    return CATEGORIES.filter(c => (worker.skills || []).includes(c.id));
   };
 
   // Compute final lists
@@ -1418,7 +1486,7 @@ export default function App() {
     if (selectedAreaFilter && worker.area !== selectedAreaFilter) return false;
 
     // Segment filter: Workers (no vendor skills) vs Material Stores (has vendor skills starting with vendor_)
-    const isVendorSkill = worker.skills.some(s => s.startsWith("vendor_"));
+    const isVendorSkill = (worker.skills || []).some(s => s.startsWith("vendor_"));
     if (activeSearchSegment === "material_stores") {
       if (!isVendorSkill) return false;
     } else {
@@ -1426,7 +1494,7 @@ export default function App() {
     }
 
     // Filter by skill category
-    if (selectedSkillFilter && !worker.skills.includes(selectedSkillFilter)) return false;
+    if (selectedSkillFilter && !(worker.skills || []).includes(selectedSkillFilter)) return false;
 
     // Search query matches name or skill title
     if (searchQuery.trim()) {
@@ -3742,7 +3810,7 @@ export default function App() {
                               </span>
 
                               {/* Green and Red Laborer OccupState status */}
-                              {!worker.skills.some(s => s.startsWith("vendor_")) && (
+                              {!(worker.skills || []).some(s => s.startsWith("vendor_")) && (
                                 <span className="shrink-0">
                                   {worker.status === "busy" ? (
                                     <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 text-[9px] font-black text-red-700 bg-red-100 border border-red-200 rounded-lg uppercase tracking-wider">
@@ -4180,11 +4248,13 @@ export default function App() {
                             if (file) {
                               const r = new FileReader();
                               r.onloadend = () => {
-                                setRegPhoto(r.result as string);
-                                showNotification(
-                                  lang === "hi" ? "कैमरा फोटो सफलतापूर्वक जुड़ गया!" : "Camera snapshot loaded successfully!",
-                                  "success"
-                                );
+                                compressAndSetPhoto(r.result as string, (compressed) => {
+                                  setRegPhoto(compressed);
+                                  showNotification(
+                                    lang === "hi" ? "कैमरा फोटो सफलतापूर्वक जुड़ गया!" : "Camera snapshot loaded successfully!",
+                                    "success"
+                                  );
+                                });
                               };
                               r.readAsDataURL(file);
                             }
@@ -4208,11 +4278,13 @@ export default function App() {
                             if (file) {
                               const r = new FileReader();
                               r.onloadend = () => {
-                                setRegPhoto(r.result as string);
-                                showNotification(
-                                  lang === "hi" ? "गैलरी फोटो सफलतापूर्वक जुड़ गया!" : "Gallery photo loaded successfully!",
-                                  "success"
-                                );
+                                compressAndSetPhoto(r.result as string, (compressed) => {
+                                  setRegPhoto(compressed);
+                                  showNotification(
+                                    lang === "hi" ? "गैलरी फोटो सफलतापूर्वक जुड़ गया!" : "Gallery photo loaded successfully!",
+                                    "success"
+                                  );
+                                });
                               };
                               r.readAsDataURL(file);
                             }
