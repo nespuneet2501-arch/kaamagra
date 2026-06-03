@@ -718,6 +718,7 @@ export default function App() {
   const [jobTitle, setJobTitle] = useState<string>("");
   const [jobDesc, setJobDesc] = useState<string>("");
   const [jobSkill, setJobSkill] = useState<string>("mason");
+  const [jobCustomSkillText, setJobCustomSkillText] = useState<string>("");
   const [jobWage, setJobWage] = useState<string>("");
   const [jobArea, setJobArea] = useState<string>("Tajganj");
   const [jobAddress, setJobAddress] = useState<string>("");
@@ -741,6 +742,7 @@ export default function App() {
   const [regName, setRegName] = useState<string>("");
   const [regMobile, setRegMobile] = useState<string>("");
   const [regSelectedSkills, setRegSelectedSkills] = useState<string[]>([]);
+  const [regCustomSkillText, setRegCustomSkillText] = useState<string>("");
   const [regCity, setRegCity] = useState<string>("Agra");
   const [regArea, setRegArea] = useState<string>("Tajganj");
   const [regAddress, setRegAddress] = useState<string>("");
@@ -903,14 +905,13 @@ export default function App() {
 
   const handleCompleteRegistration = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName.trim()) {
-      showNotification(
-        lang === "hi" ? "कृपया अपना नाम लिखें या बोलें!" : "Please write or speak your name!",
-        "error"
-      );
-      setRegStep(2);
-      return;
+    
+    // Fallback name if empty - allows vendor to select "Others" / change name
+    let finalName = regName.trim();
+    if (!finalName) {
+      finalName = lang === "hi" ? "अन्य विक्रेता / मजदूर (Others)" : "Others (Laborer/Vendor)";
     }
+
     if (!regMobile.trim() || regMobile.length < 10) {
       showNotification(
         lang === "hi" ? "कृपया 10 अंकों का मोबाइल नंबर डालें!" : "Please enter a valid 10-digit mobile number!",
@@ -919,13 +920,11 @@ export default function App() {
       setRegStep(3);
       return;
     }
-    if (regSelectedSkills.length === 0) {
-      showNotification(
-        lang === "hi" ? "कृपया कम से कम एक काम/हुनर चुनें!" : "Please select at least one skill category!",
-        "error"
-      );
-      setRegStep(4);
-      return;
+
+    // Fallback category if none selected - assign it to "Others" (other)
+    let finalSkills = [...regSelectedSkills];
+    if (finalSkills.length === 0) {
+      finalSkills = ["other"];
     }
 
     // Find coordinates for the chosen city & area to calculate distances
@@ -936,10 +935,10 @@ export default function App() {
 
     const newWorker: Worker = {
       id: "w-" + Date.now(),
-      name: regName,
-      name_hi: lang === "hi" ? regName : undefined,
+      name: finalName,
+      name_hi: lang === "hi" ? finalName : undefined,
       phone: regMobile,
-      skills: regSelectedSkills,
+      skills: finalSkills,
       city: regCity,
       area: regArea,
       address: regAddress || `${regArea}, ${regCity}`,
@@ -949,7 +948,8 @@ export default function App() {
       isApproved: true, // Autoapprove for demonstration in prototype
       rating: 5.0,
       completedJobs: 0,
-      isVerified: true
+      isVerified: true,
+      customSkillText: regCustomSkillText || undefined
     };
 
     setWorkers([newWorker, ...workers]);
@@ -962,12 +962,12 @@ export default function App() {
             "success"
           );
           // Also record general user profile and login tracing automatically
-          autoRecordProfileAndLoginOnSupabase(regName, regMobile, "laborer");
+          autoRecordProfileAndLoginOnSupabase(finalName, regMobile, "laborer");
         })
         .catch(err => {
           console.error("Failed pushing profile to Supabase:", err);
           // Auto record anyway
-          autoRecordProfileAndLoginOnSupabase(regName, regMobile, "laborer");
+          autoRecordProfileAndLoginOnSupabase(finalName, regMobile, "laborer");
         });
     }
     playAudioTone("success");
@@ -983,6 +983,7 @@ export default function App() {
     setRegName("");
     setRegMobile("");
     setRegSelectedSkills([]);
+    setRegCustomSkillText("");
     setRegStep(1);
     setRegAddress("");
     setActiveTab("search"); // Switch to search view so they can see themselves!
@@ -2462,9 +2463,9 @@ export default function App() {
                               alert(lang === 'hi' ? "कृपया सही नाम और १० डिजिट का फोन नंबर दर्ज करें!" : "Please provide a valid name and 10-digit mobile phone!");
                               return;
                             }
-                            if (behalfSelectedSkills.length === 0) {
-                              alert(lang === 'hi' ? "कृपया कम से कम एक हुनर चुनें!" : "Please select at least one skill!");
-                              return;
+                            let finalSkills = behalfSelectedSkills;
+                            if (finalSkills.length === 0) {
+                              finalSkills = ["other"];
                             }
 
                             // Build local worker
@@ -2472,7 +2473,7 @@ export default function App() {
                               id: `worker-${Date.now()}`,
                               name: behalfName,
                               phone: behalfPhone,
-                              skills: behalfSelectedSkills,
+                              skills: finalSkills,
                               city: "Agra",
                               area: behalfArea,
                               address: behalfAddress || `${behalfArea}, Agra`,
@@ -2900,6 +2901,7 @@ export default function App() {
                             <div>
                               <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">
                                 {lang === "hi" ? skillObj.name_hi : skillObj.name_en}
+                                {skillObj.id === "other" && job.customSkillText && ` (${job.customSkillText})`}
                               </div>
                               <h4 className="font-black text-sm sm:text-base text-slate-800 leading-tight">
                                 {lang === "hi" ? (job.title_hi || job.title) : job.title}
@@ -3060,6 +3062,11 @@ export default function App() {
 
                   const matchedAreaObj = INDIAN_CITIES[0].areas.find((a) => a.name_en === jobArea) || INDIAN_CITIES[0].areas[0];
 
+                  let finalJobSkill = jobSkill;
+                  if (!finalJobSkill || !CATEGORIES.some(c => c.id === finalJobSkill)) {
+                    finalJobSkill = "other";
+                  }
+
                   const newJob: Job = {
                     id: "job-" + Date.now(),
                     employerName: currentUser.name,
@@ -3068,7 +3075,7 @@ export default function App() {
                     title_hi: jobTitle,
                     description: jobDesc || "Daily construction labor requirement",
                     description_hi: jobDesc || "दैनिक मजदूरी काम की जरुरत",
-                    skillNeeded: jobSkill,
+                    skillNeeded: finalJobSkill,
                     city: "Agra",
                     area: jobArea,
                     address: jobAddress || `${jobArea}, Agra`,
@@ -3079,6 +3086,7 @@ export default function App() {
                       lat: matchedAreaObj.lat,
                       lng: matchedAreaObj.lng,
                     },
+                    customSkillText: jobCustomSkillText || undefined
                   };
 
                   setJobs((prev) => [newJob, ...prev]);
@@ -3092,6 +3100,7 @@ export default function App() {
                   setJobDesc("");
                   setJobWage("");
                   setJobAddress("");
+                  setJobCustomSkillText("");
 
                   playAudioTone("success");
                   showNotification(
@@ -3157,6 +3166,21 @@ export default function App() {
                         </option>
                       ))}
                     </select>
+                    {jobSkill === "other" && (
+                      <div className="mt-2 text-left">
+                        <label className="block text-[9px] font-extrabold text-[#FF4D00] uppercase mb-1">
+                          {lang === "hi" ? "नया या अन्य काम का नाम लिखें" : "Write custom work type / category name"}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={jobCustomSkillText}
+                          onChange={(e) => setJobCustomSkillText(e.target.value)}
+                          placeholder={lang === "hi" ? "उदा. पीओपी या फॉल्स सीलिंग" : "e.g., Gypsum POP / paint work"}
+                          className="h-9 w-full bg-slate-50 border border-slate-200 focus:border-[#FF4D00] focus:bg-white rounded-lg px-2.5 text-xs font-bold text-slate-700 outline-none transition"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -3793,6 +3817,7 @@ export default function App() {
                               {cats.map(cat => (
                                 <span key={cat.id} className="inline-flex items-center bg-emerald-50 text-emerald-800 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-md">
                                   {lang === "hi" ? cat.name_hi : cat.name_en}
+                                  {cat.id === "other" && worker.customSkillText && ` (${worker.customSkillText})`}
                                 </span>
                               ))}
                             </div>
@@ -4359,6 +4384,19 @@ export default function App() {
                         placeholder={lang === "hi" ? "जैसे: हरीश कुमार मिस्त्री" : "e.g. Harish Kumar"}
                         className="w-full bg-white text-center text-lg font-bold border border-slate-200 rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                       />
+                      
+                      <div className="mt-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRegName(lang === "hi" ? "अन्य विक्रेता / मजदूर" : "Others (Laborer/Vendor)");
+                            playAudioTone("click");
+                          }}
+                          className="text-emerald-700 hover:text-emerald-800 text-xs font-extrabold underline cursor-pointer"
+                        >
+                          ✨ {lang === "hi" ? "नाम उपलब्ध नहीं? 'अन्य (Others)' दर्ज करें" : "Name not present? Tap to use 'Others'"}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -4376,11 +4414,7 @@ export default function App() {
                       onClick={() => {
                         playAudioTone("click");
                         if (!regName.trim()) {
-                          showNotification(
-                            lang === "hi" ? "कृपया अपना नाम लिखें या बोलें!" : "Please write or speak your name!",
-                            "error"
-                          );
-                          return;
+                          setRegName(lang === "hi" ? "अन्य विक्रेता / मजदूर (Others)" : "Others (Laborer/Vendor)");
                         }
                         setRegStep(3);
                       }}
@@ -4548,6 +4582,21 @@ export default function App() {
                     })}
                   </div>
 
+                  {regSelectedSkills.includes("other") && (
+                    <div className="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 text-left space-y-1">
+                      <label className="block text-[10px] font-extrabold text-[#FF4D00] uppercase">
+                        {lang === "hi" ? "विशेष हुनर / सप्लायर सामान यहाँ लिखें" : "Specify custom skill/vendor products here"}
+                      </label>
+                      <input
+                        type="text"
+                        value={regCustomSkillText}
+                        onChange={(e) => setRegCustomSkillText(e.target.value)}
+                        placeholder={lang === "hi" ? "उदा. पीओपी फॉल्स सीलिंग, जिप्सम वर्क, पेंट सप्लायर" : "e.g., POP False Ceiling, Gypsum Work, Paint supplier"}
+                        className="w-full bg-white border border-amber-300 focus:ring-2 focus:ring-[#FF4D00] rounded-xl py-2.5 px-3 text-xs font-bold text-slate-850 outline-none transition"
+                      />
+                    </div>
+                  )}
+
                   <div className="pt-3 flex justify-between">
                     <button
                       onClick={() => {
@@ -4562,12 +4611,9 @@ export default function App() {
                     <button
                       onClick={() => {
                         playAudioTone("click");
+                        // If no category selected, automatically assign to "Others" (other)
                         if (regSelectedSkills.length === 0) {
-                          showNotification(
-                            lang === "hi" ? "कृपया कम से कम एक काम/हुनर चुनें!" : "Please select at least one skill category!",
-                            "error"
-                          );
-                          return;
+                          setRegSelectedSkills(["other"]);
                         }
                         setRegStep(5);
                       }}
