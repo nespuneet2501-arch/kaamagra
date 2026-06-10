@@ -24,6 +24,7 @@ export interface Worker {
   isVerified?: boolean;
   status?: "available" | "busy";
   customSkillText?: string;
+  gender?: "male" | "female" | "other";
 }
 
 export interface Job {
@@ -414,21 +415,22 @@ export const INITIAL_WORKERS: Worker[] = [
   },
   {
     id: "w-agra-6",
-    name: "Ramu Yadav Shovelwala",
-    name_hi: "रामु यादव खुदाईवाला",
+    name: "Reena Devi Shovelwali",
+    name_hi: "रीना देवी खुदाईवाली",
     phone: "9822334455",
     skills: ["digging", "construction"],
     city: "Agra",
     area: "Dayalbagh",
     address: "Radhasoami Satsang Colony, Dayalbagh, Agra",
     location: { lat: 27.2240, lng: 78.0120 },
-    photo: "https://images.unsplash.com/photo-1618015358954-115ef1ed1515?w=150&h=150&fit=crop&crop=face",
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
     registeredAt: "2026-05-25T16:00:00Z",
     isApproved: true,
     rating: 4.2,
     completedJobs: 12,
     isVerified: false,
-    status: "available"
+    status: "available",
+    gender: "female"
   },
   {
     id: "w-agra-7",
@@ -630,21 +632,22 @@ export const INITIAL_WORKERS: Worker[] = [
   },
   {
     id: "w-agra-18",
-    name: "Raju POP Designer Agra",
-    name_hi: "राजू पी.ओ.पी. कान्ट्रेक्टर",
+    name: "Pooja Sharma POP Designer",
+    name_hi: "पूजा शर्मा पी.ओ.पी. डिजाइनर",
     phone: "9123884455",
     skills: ["pop_gypsum"],
     city: "Agra",
     area: "Tajganj",
     address: "Basai Road, Fatehabad Marg, Tajganj, Agra",
     location: { lat: 27.1682, lng: 78.0422 },
-    photo: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&h=150&fit=crop",
+    photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face",
     registeredAt: "2026-06-02T12:00:00Z",
     isApproved: true,
     rating: 4.8,
     completedJobs: 73,
     isVerified: true,
-    status: "available"
+    status: "available",
+    gender: "female"
   },
   {
     id: "w-agra-19",
@@ -684,21 +687,22 @@ export const INITIAL_WORKERS: Worker[] = [
   },
   {
     id: "w-agra-21",
-    name: "Kamlesh Paint Specialist Yogi Group",
-    name_hi: "कमलेश पेंटर & पुट्टी विशेषज्ञ ग्रुप",
+    name: "Seema Kumari Paint Specialist",
+    name_hi: "सीमा कुमारी पेंट विशेषज्ञ",
     phone: "9411225588",
     skills: ["painter"],
     city: "Agra",
     area: "Sadar Bazar",
     address: "Shop No. 15, Sadar Bazar Cantt, Agra",
     location: { lat: 27.1610, lng: 78.0120 },
-    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop",
+    photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
     registeredAt: "2026-06-02T15:00:00Z",
     isApproved: true,
     rating: 4.5,
     completedJobs: 62,
     isVerified: true,
-    status: "available"
+    status: "available",
+    gender: "female"
   },
   {
     id: "w-agra-22",

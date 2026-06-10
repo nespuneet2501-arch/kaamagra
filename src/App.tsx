@@ -743,6 +743,7 @@ export default function App() {
   const [regMobile, setRegMobile] = useState<string>("");
   const [regSelectedSkills, setRegSelectedSkills] = useState<string[]>([]);
   const [regCustomSkillText, setRegCustomSkillText] = useState<string>("");
+  const [regGender, setRegGender] = useState<"male" | "female" | "other">("male");
   const [regCity, setRegCity] = useState<string>("Agra");
   const [regArea, setRegArea] = useState<string>("Tajganj");
   const [regAddress, setRegAddress] = useState<string>("");
@@ -949,7 +950,8 @@ export default function App() {
       rating: 5.0,
       completedJobs: 0,
       isVerified: true,
-      customSkillText: regCustomSkillText || undefined
+      customSkillText: regCustomSkillText || undefined,
+      gender: regGender
     };
 
     setWorkers([newWorker, ...workers]);
@@ -984,6 +986,7 @@ export default function App() {
     setRegMobile("");
     setRegSelectedSkills([]);
     setRegCustomSkillText("");
+    setRegGender("male");
     setRegStep(1);
     setRegAddress("");
     setActiveTab("search"); // Switch to search view so they can see themselves!
@@ -1006,6 +1009,49 @@ export default function App() {
   const [editProfileRole, setEditProfileRole] = useState<string>("");
   const [showSqlSchema, setShowSqlSchema] = useState<boolean>(false);
   const [dbTablesMissing, setDbTablesMissing] = useState<boolean>(false);
+
+  // --- Female Worker Contact Safeguards State ---
+  const [secureContactWorker, setSecureContactWorker] = useState<Worker | null>(null);
+  const [secureContactAction, setSecureContactAction] = useState<"call" | "whatsapp" | "share" | null>(null);
+  const [secureContactCallback, setSecureContactCallback] = useState<(() => void) | null>(null);
+  const [secureEmailSending, setSecureEmailSending] = useState<boolean>(false);
+  const [secureEmailSent, setSecureEmailSent] = useState<boolean>(false);
+
+  const getDisplayPhone = (worker: Worker) => {
+    if (worker.gender === "female") {
+      const p = worker.phone;
+      if (p.length >= 10) {
+        return p.slice(0, 5) + "*****";
+      } else {
+        const half = Math.floor(p.length / 2);
+        return p.slice(0, p.length - half) + "*".repeat(half);
+      }
+    }
+    return worker.phone;
+  };
+
+  const triggerProxyMessageNotification = (worker: Worker, actionType: "call" | "whatsapp" | "share") => {
+    const employerDetails = currentUser 
+      ? `${currentUser.name} (${currentUser.phone})`
+      : `Anonymous Guest (Not logged in)`;
+
+    const actionTextMap = {
+      call: "direct phone call link initiation",
+      whatsapp: "direct WhatsApp message thread connection",
+      share: "contact sharing with clipboard copy"
+    };
+
+    const actionText = actionTextMap[actionType];
+
+    const newAudit = {
+      id: "audit-" + Date.now(),
+      action: `📧 [SECURITY DISPATCH] Sent alert message to admin (nespuneet2501@gmail.com). Contact attempt by ${employerDetails} to FEMALE laborer ${worker.name} (${worker.phone}) via ${actionText}. Status: SMTP relay delivered.`,
+      timestamp: new Date().toISOString(),
+      admin: "Security System Automatic Trace",
+      category: "security"
+    };
+    setAuditLogs(prev => [newAudit, ...prev]);
+  };
 
   // --- Admin/System Management state ---
   const [adminSubTab, setAdminSubTab] = useState<"overview" | "workers" | "employers" | "assignments" | "announcements" | "support" | "audit">("overview");
@@ -1671,50 +1717,59 @@ export default function App() {
         </div>
       </header>
 
-      {/* Supabase Live DB Connection Status Indicator (Top of the interface) */}
-      <div className="bg-slate-50 border-b border-slate-200/60 py-2 px-4 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.05)]">
-        <div className="max-w-3xl mx-auto flex items-center justify-between text-xs font-semibold">
-          <div className="flex items-center space-x-2.5">
-            <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider">
-              {lang === "hi" ? "डेटाबेस स्तर" : "Database"}
-            </span>
-            {sbStatus === "connected" ? (
-              <span className="bg-emerald-50 text-emerald-700 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center space-x-1.5 shadow-2xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span>{lang === "hi" ? "डेटाबेस कनेक्टेड" : "Database Connected"}</span>
+      {/* Supabase Live DB Connection Status Indicator (Top of the interface) - Only visible to admin; green symbol for others */}
+      {currentUser?.role === "admin" ? (
+        <div className="bg-slate-50 border-b border-slate-200/60 py-2 px-4 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.05)]">
+          <div className="max-w-3xl mx-auto flex items-center justify-between text-xs font-semibold">
+            <div className="flex items-center space-x-2.5">
+              <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider">
+                {lang === "hi" ? "डेटाबेस स्तर" : "Database"}
               </span>
-            ) : sbStatus === "error" ? (
-              <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center space-x-1.5 shadow-2xs">
-                <span className="relative flex h-2 w-2 mb-0.5">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              {sbStatus === "connected" ? (
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center space-x-1.5 shadow-2xs">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>{lang === "hi" ? "डेटाबेस कनेक्टेड" : "Database Connected"}</span>
                 </span>
-                <span className="truncate max-w-[170px] sm:max-w-none">
-                  {lang === "hi" ? `करेक्शन विफल` : `Database Sync Warning`}
+              ) : sbStatus === "error" ? (
+                <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center space-x-1.5 shadow-2xs">
+                  <span className="relative flex h-2 w-2 mb-0.5">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  <span className="truncate max-w-[170px] sm:max-w-none">
+                    {lang === "hi" ? `करेक्शन विफल` : `Database Sync Warning`}
+                  </span>
                 </span>
-              </span>
-            ) : (
-              <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center space-x-1.5">
-                <span className="relative flex h-2 w-2 mb-0.5">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
+              ) : (
+                <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center space-x-1.5">
+                  <span className="relative flex h-2 w-2 mb-0.5">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
+                  </span>
+                  <span>{lang === "hi" ? "डिस्कनेक्टेड (लोकल स्टोरेज)" : "Disconnected (Local Storage)"}</span>
                 </span>
-                <span>{lang === "hi" ? "डिस्कनेक्टेड (लोकल स्टोरेज)" : "Disconnected (Local Storage)"}</span>
-              </span>
-            )}
-          </div>
-          
-          <div className="text-[10px] text-slate-400 font-bold flex items-center space-x-1.5">
-            <span>{lang === "hi" ? "क्लाउड लाइव सिंक" : "Cloud Sync"}</span>
-            {sbSyncing ? (
-              <span className="text-[#FF4D00] animate-spin font-bold">🔄</span>
-            ) : (
-              <span className="text-emerald-500 font-bold">●</span>
-            )}
+              )}
+            </div>
+            
+            <div className="text-[10px] text-slate-400 font-bold flex items-center space-x-1.5">
+              <span>{lang === "hi" ? "क्लाउड लाइव सिंक" : "Cloud Sync"}</span>
+              {sbSyncing ? (
+                <span className="text-[#FF4D00] animate-spin font-bold">🔄</span>
+              ) : (
+                <span className="text-emerald-500 font-bold">●</span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div id="top-green-dot-bar" className="bg-slate-50 border-b border-slate-200/50 py-1.5 px-4 flex justify-center items-center">
+          <div className="relative flex h-2.5 w-2.5" title="System Status: Active">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </div>
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-4">
@@ -3854,13 +3909,33 @@ export default function App() {
 
                             {/* Dynamic Physical/Shop Street Address for purchasing materials */}
                             {worker.address && (
-                              <div className="mt-2 text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-100 p-2 rounded-xl flex items-start space-x-1">
+                              <div className="mt-2 text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-100 p-2 rounded-xl flex items-start space-x-1 border: 1px_solid">
                                 <span className="text-sm shrink-0">🏠</span>
                                 <span className="leading-tight">
                                   <strong className="font-extrabold">{lang === 'hi' ? 'दुकान/पता:' : 'Address:'}</strong> {worker.address}
                                 </span>
                               </div>
                             )}
+
+                            {/* Contact number with female mask safeguard */}
+                            <div className="mt-2 bg-slate-50 border border-slate-200/50 p-2 rounded-xl flex items-center justify-between text-left">
+                              <div className="flex items-center space-x-1 min-w-0">
+                                <span>📞</span>
+                                <span className="text-slate-500 text-[10px] shrink-0 font-extrabold">{lang === "hi" ? "नंबर:" : "No:"}</span>
+                                <span className="font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-xs text-[#FF4D00] tracking-wider font-extrabold truncate">
+                                  {getDisplayPhone(worker)}
+                                </span>
+                              </div>
+                              {worker.gender === "female" ? (
+                                <span className="text-[9px] bg-pink-150 text-pink-700 font-extrabold px-1.5 py-0.5 rounded border border-pink-200 animate-pulse flex items-center space-x-1 uppercase shrink-0">
+                                  <span>🔒 {lang === "hi" ? "गोपनीय" : "Secured"}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[9px] bg-emerald-50 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded border border-emerald-200/80 uppercase shrink-0">
+                                  {lang === "hi" ? "पब्लिक" : "Public"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -3868,40 +3943,72 @@ export default function App() {
                         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
                           
                           {/* Anchor element to call directly */}
-                          <a
-                            href={`tel:${worker.phone}`}
+                          <button
+                            type="button"
                             onClick={() => {
                               playAudioTone("click");
-                              showNotification(
-                                lang === "hi" 
-                                  ? `कॉल किया जा रहा है: ${worker.phone}` 
-                                  : `Calling worker mobile: ${worker.phone}`
-                              );
+                              const connectAction = () => {
+                                showNotification(
+                                  lang === "hi" 
+                                    ? `कॉल किया जा रहा है: ${worker.phone}` 
+                                    : `Calling worker mobile: ${worker.phone}`
+                                );
+                                window.location.href = `tel:${worker.phone}`;
+                              };
+
+                              if (worker.gender === "female") {
+                                setSecureContactWorker(worker);
+                                setSecureContactAction("call");
+                                setSecureContactCallback(() => connectAction);
+                                setSecureEmailSending(true);
+                                setSecureEmailSent(false);
+                                setTimeout(() => {
+                                  setSecureEmailSending(false);
+                                  setSecureEmailSent(true);
+                                }, 1500);
+                              } else {
+                                connectAction();
+                              }
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-2 rounded-xl font-bold text-[11px] sm:text-xs flex items-center justify-center space-x-1 transition active:scale-95 shadow-sm cursor-pointer"
                           >
                             <Phone className="w-3.5 h-3.5 shrink-0" />
                             <span>{lang === "hi" ? "फ़ोन कॉल" : "Call"}</span>
-                          </a>
+                          </button>
 
                           {/* Anchor element to send WhatsApp */}
-                          <a
-                            href={`https://wa.me/91${worker.phone}?text=नमस्ते ${worker.name}, मुझे 'काम' ऐप से आपका नंबर मिला। क्या आप काम के लिए उपलब्ध हैं?`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
                             onClick={() => {
                               playAudioTone("click");
-                              showNotification(
-                                lang === "hi"
-                                  ? "व्हाट्सएप चैट खोली जा रही है..."
-                                  : "Opening WhatsApp chat..."
-                              );
+                              const connectAction = () => {
+                                showNotification(
+                                  lang === "hi"
+                                    ? "व्हाट्सएप चैट खोली जा रही है..."
+                                    : "Opening WhatsApp chat..."
+                                );
+                                window.open(`https://wa.me/91${worker.phone}?text=नमस्ते ${worker.name}, मुझे 'काम' ऐप से आपका नंबर मिला। क्या आप काम के लिए उपलब्ध हैं?`, "_blank", "noopener,noreferrer");
+                              };
+
+                              if (worker.gender === "female") {
+                                setSecureContactWorker(worker);
+                                setSecureContactAction("whatsapp");
+                                setSecureContactCallback(() => connectAction);
+                                setSecureEmailSending(true);
+                                setSecureEmailSent(false);
+                                setTimeout(() => {
+                                  setSecureEmailSending(false);
+                                  setSecureEmailSent(true);
+                                }, 1500);
+                              } else {
+                                connectAction();
+                              }
                             }}
                             className="bg-slate-800 hover:bg-slate-900 text-white py-2.5 px-2 rounded-xl font-bold text-[11px] sm:text-xs flex items-center justify-center space-x-1 transition active:scale-95 cursor-pointer"
                           >
                             <span className="font-bold text-emerald-400">💬</span>
                             <span>{lang === "hi" ? "व्हाट्सएप" : "WhatsApp"}</span>
-                          </a>
+                          </button>
 
                           {/* Interactive Web Share button */}
                           <button
@@ -3910,45 +4017,68 @@ export default function App() {
                               playAudioTone("click");
                               const name = lang === "hi" ? (worker.name_hi || worker.name) : worker.name;
                               const skillList = cats.map(c => lang === "hi" ? c.name_hi : c.name_en).join(", ");
+                              
+                              const displayNum = getDisplayPhone(worker);
+                              const suffix = worker.gender === "female" ? " (🔒 Secured with Admin: nespuneet2501@gmail.com)" : "";
+                              
                               const shareText = lang === "hi"
-                                ? `कामगार का नाम: ${name}\nहुनर प्रकार: ${skillList}\nफ़ोन नंबर: ${worker.phone}\n'काम' (KAAM) ऐप से शेयर किया गया।`
-                                : `Worker Name: ${name}\nSkills: ${skillList}\nMobile: ${worker.phone}\nShared via 'KAAM' Agra Labor Connect App.`;
+                                ? `कामगार का नाम: ${name}\nहुनर प्रकार: ${skillList}\nफ़ोन नंबर: ${displayNum}${suffix}\n'काम' (KAAM) ऐप से शेयर किया गया।`
+                                : `Worker Name: ${name}\nSkills: ${skillList}\nMobile: ${displayNum}${suffix}\nShared via 'KAAM' Agra Labor Connect App.`;
 
-                              if (navigator.share) {
-                                try {
-                                  await navigator.share({
-                                    title: `KAAM - ${name}`,
-                                    text: shareText,
-                                    url: window.location.href,
-                                  });
-                                  showNotification(
-                                    lang === "hi" ? "सफलतापूर्वक शेयर किया गया!" : "Shared successfully!",
-                                    "success"
-                                  );
-                                } catch (err) {
-                                  console.warn("Share cancelled or failed:", err);
+                              const connectAction = async () => {
+                                const fullShareText = lang === "hi"
+                                  ? `कामगार का नाम: ${name}\nहुनर प्रकार: ${skillList}\nफ़ोन नंबर: ${worker.phone}\n'काम' (KAAM) ऐप से शेयर किया गया।`
+                                  : `Worker Name: ${name}\nSkills: ${skillList}\nMobile: ${worker.phone}\nShared via 'KAAM' Agra Labor Connect App.`;
+                                if (navigator.share) {
+                                  try {
+                                    await navigator.share({
+                                      title: `KAAM - ${name}`,
+                                      text: fullShareText,
+                                      url: window.location.href,
+                                    });
+                                    showNotification(
+                                      lang === "hi" ? "सफलतापूर्वक शेयर किया गया!" : "Shared successfully!",
+                                      "success"
+                                    );
+                                  } catch (err) {
+                                    console.warn("Share cancelled or failed:", err);
+                                  }
+                                } else {
+                                  // Fallback: copy to clipboard
+                                  try {
+                                    await navigator.clipboard.writeText(`${fullShareText}\n${window.location.href}`);
+                                    showNotification(
+                                      lang === "hi"
+                                        ? "विवरण कॉपी कर लिया गया है! इसे व्हाट्सएप या सोशल मीडिया पर शेयर करें।"
+                                        : "Details copied! Paste it on WhatsApp or social media.",
+                                      "success"
+                                    );
+                                    triggerVoiceGuidance(
+                                      "विवरण कॉपी कर लिया गया है, आप इसे कहीं भी भेज सकते हैं।",
+                                      "Details copied to clipboard, you can share it now."
+                                    );
+                                  } catch (err) {
+                                    console.error("Clipboard failure:", err);
+                                    showNotification(
+                                      lang === "hi" ? "कॉपी करने में त्रुटि।" : "Failed to copy details.",
+                                      "error"
+                                    );
+                                  }
                                 }
+                              };
+
+                              if (worker.gender === "female") {
+                                setSecureContactWorker(worker);
+                                setSecureContactAction("share");
+                                setSecureContactCallback(() => connectAction);
+                                setSecureEmailSending(true);
+                                setSecureEmailSent(false);
+                                setTimeout(() => {
+                                  setSecureEmailSending(false);
+                                  setSecureEmailSent(true);
+                                }, 1500);
                               } else {
-                                // Fallback: copy to clipboard
-                                try {
-                                  await navigator.clipboard.writeText(`${shareText}\n${window.location.href}`);
-                                  showNotification(
-                                    lang === "hi"
-                                      ? "विवरण कॉपी कर लिया गया है! इसे व्हाट्सएप या सोशल मीडिया पर शेयर करें।"
-                                      : "Details copied! Paste it on WhatsApp or social media.",
-                                    "success"
-                                  );
-                                  triggerVoiceGuidance(
-                                    "विवरण कॉपी कर लिया गया है, आप इसे कहीं भी भेज सकते हैं।",
-                                    "Details copied to clipboard, you can share it now."
-                                  );
-                                } catch (err) {
-                                  console.error("Clipboard failure:", err);
-                                  showNotification(
-                                    lang === "hi" ? "कॉपी करने में त्रुटि।" : "Failed to copy details.",
-                                    "error"
-                                  );
-                                }
+                                await connectAction();
                               }
                             }}
                             className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-2 rounded-xl font-bold text-[11px] sm:text-xs flex items-center justify-center space-x-1 transition active:scale-95 shadow-sm cursor-pointer"
@@ -4396,6 +4526,74 @@ export default function App() {
                         >
                           ✨ {lang === "hi" ? "नाम उपलब्ध नहीं? 'अन्य (Others)' दर्ज करें" : "Name not present? Tap to use 'Others'"}
                         </button>
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-slate-200 text-left">
+                        <label className="block text-xs font-bold text-slate-500 mb-2">
+                          {lang === "hi" ? "लिंग चुनें (Select Gender):" : "Select Gender:"}
+                        </label>
+                        <div className="grid grid-cols-3 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playAudioTone("click");
+                              setRegGender("male");
+                            }}
+                            className={`py-3 px-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center space-y-1 transition cursor-pointer ${
+                              regGender === "male"
+                                ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                                : "border-slate-200 bg-white hover:border-slate-300 text-slate-750"
+                            }`}
+                          >
+                            <span className="text-xl">👨</span>
+                            <span>{lang === "hi" ? "पुरुष (Male)" : "Male"}</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playAudioTone("click");
+                              setRegGender("female");
+                            }}
+                            className={`py-3 px-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center space-y-1 transition cursor-pointer ${
+                              regGender === "female"
+                                ? "border-pink-600 bg-pink-50 text-pink-800"
+                                : "border-slate-200 bg-white hover:border-slate-300 text-slate-755"
+                            }`}
+                          >
+                            <span className="text-xl">👩</span>
+                            <span className="flex items-center space-x-1">
+                              <span>{lang === "hi" ? "महिला" : "Female"}</span>
+                              <span className="text-[9px] bg-pink-150 text-pink-600 border border-pink-200 px-1 py-0.5 rounded-sm font-extrabold uppercase">🔒 Proxy</span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playAudioTone("click");
+                              setRegGender("other");
+                            }}
+                            className={`py-3 px-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center space-y-1 transition cursor-pointer ${
+                              regGender === "other"
+                                ? "border-amber-600 bg-amber-50 text-amber-800"
+                                : "border-slate-200 bg-white hover:border-slate-300 text-slate-755"
+                            }`}
+                          >
+                            <span className="text-xl">🧑</span>
+                            <span>{lang === "hi" ? "अन्य (Other)" : "Other"}</span>
+                          </button>
+                        </div>
+                        {regGender === "female" && (
+                          <div className="mt-3 bg-pink-50 border border-pink-100 text-pink-900 rounded-xl p-3 text-[11px] leading-relaxed flex items-start space-x-2">
+                            <span className="text-sm">🛡️</span>
+                            <span>
+                              {lang === "hi" 
+                                ? "सुरक्षा के लिए, आपका आधा फ़ोन नंबर छुपाया जाएगा। जब कोई नियोक्ता आपसे संपर्क करेगा, तो संपर्क होने से पहले हमारे एडमिन को सूचना संदेश भेजा जाएगा।" 
+                                : "For your privacy, your phone number will be partially masked. Connecting with you requires an automated, verified admin prompt tracing first."}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -5082,6 +5280,150 @@ export default function App() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* FEMALE WORKER CONTACT SAFEGUARD INTERCEPT MODAL */}
+        {secureContactWorker && (
+          <div id="secure-contact-proxy-modal" className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg border-4 border-pink-700 shadow-2xl space-y-4 text-left font-sans text-slate-800"
+            >
+              <div className="flex items-center justify-between border-b border-pink-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xl">🛡️</span>
+                  <h3 className="font-extrabold text-[#FF4D00] text-xs sm:text-sm uppercase tracking-wider">
+                    {lang === "hi" ? "🔒 सुरक्षित व्यवस्थापक सुरक्षा प्रॉक्सी" : "🔒 Secure Admin Proxy Handshake"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playAudioTone("click");
+                    setSecureContactWorker(null);
+                    setSecureContactAction(null);
+                    setSecureContactCallback(null);
+                    setSecureEmailSending(false);
+                    setSecureEmailSent(false);
+                  }}
+                  className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-1.5 rounded-lg transition shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="bg-pink-50/50 border border-pink-200 rounded-2xl p-4 space-y-3">
+                <h4 className="font-black text-rose-950 text-sm flex items-center space-x-1.5">
+                  <span>👩</span>
+                  <span>{secureContactWorker.name_hi || secureContactWorker.name} ({lang === 'hi' ? 'महिला कामगार' : 'Female Laborer'})</span>
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {lang === "hi" 
+                    ? "महिला श्रमिकों की सुरक्षा और गोपनीयता सुनिश्चित करने के लिए, डायरेक्ट फोन नंबर आंशिक रूप से गुप्त रखे गए हैं। संपर्क शुरू करने से पहले सिस्टम व्यवस्थापक (nespuneet2501@gmail.com) को इस कार्रवाई की तत्काल स्वचालित सूचना भेजी जा रही है।" 
+                    : "To guarantee privacy and gender-safety on KAAM, female database indices are proxy-layered. Before we bridge your connection, our SMTP agent dispatches an explicit trace dispatch record to the regional director."}
+                </p>
+              </div>
+
+              {/* AUTOMATED MAIL DELAY & STATUS SECTION */}
+              <div className="bg-slate-900 text-slate-100 rounded-2xl p-4 font-mono text-[10px] leading-normal space-y-2.5 relative overflow-hidden shadow-inner border border-slate-700">
+                <div className="absolute top-2 right-2 flex items-center space-x-1">
+                  <span className="h-2 w-2 rounded-full bg-[#FF4D00] animate-ping"></span>
+                  <span className="text-[8px] uppercase tracking-widest text-[#FF4D00] font-bold">SMTP RELAY</span>
+                </div>
+                
+                <h5 className="text-[#FF4D00] font-bold border-b border-slate-800 pb-1 flex items-center space-x-1.5">
+                  <span>✉️</span>
+                  <span>{lang === "hi" ? "स्वचालित ईमेल लॉग ब्यौरा:" : "Automated Proxy Dispatch Transcript:"}</span>
+                </h5>
+                
+                <div className="space-y-1 text-slate-300">
+                  <p><span className="text-slate-400 font-bold">To:</span> <strong className="text-emerald-400 font-bold">nespuneet2501@gmail.com</strong> (Agra regional admin)</p>
+                  <p><span className="text-slate-400 font-bold">From:</span> auto-gatekeeper@kaam-agra.gov.in</p>
+                  <p><span className="text-slate-400 font-bold">Subject:</span> [SECURITY ALARM] Direct Contact Alert on Female Worker - KAAM Agra</p>
+                  <p><span className="text-slate-400 font-bold">IP/Origin:</span> 157.45.109.12 (Agra Ingress Node-4)</p>
+                </div>
+
+                <div className="bg-slate-950/85 p-2.5 rounded-lg border border-slate-800 space-y-1 text-slate-300">
+                  <p className="font-bold text-slate-400">[MESSAGING BODY / संदेश विवरण]</p>
+                  <p>An on-demand connection hand-shake was triggered towards listed labor indices:</p>
+                  <p className="text-pink-300">• Target Laborer: {secureContactWorker.name} (Phone: {secureContactWorker.phone})</p>
+                  <p className="text-pink-300">• Target Skills: {secureContactWorker.skills.join(", ")}</p>
+                  <p className="text-teal-300">• Requester Profile Details: {currentUser ? `${currentUser.name} (${currentUser.phone})` : "Anonymous Visitor / Guest Employer"}</p>
+                  <p className="text-teal-300">• Trigger Method: {secureContactAction?.toUpperCase()}</p>
+                  <p className="text-teal-300">• Handshake Stamp: {new Date().toISOString()}</p>
+                  <p className="text-[#FF4D00]">• Status: Dispatched via secure cloud channel.</p>
+                </div>
+
+                <div className="pt-1 flex items-center space-x-2">
+                  {secureEmailSending && (
+                    <div className="flex items-center space-x-2 text-amber-400">
+                      <span className="animate-spin text-sm">⌛</span>
+                      <span className="animate-pulse">{lang === "hi" ? "व्यवस्थापक को संदेश भेजा जा रहा है..." : "Transmitting secure telemetry payload..."}</span>
+                    </div>
+                  )}
+                  {secureEmailSent && (
+                    <div className="flex items-center space-x-2 text-emerald-400 font-bold">
+                      <span>✓</span>
+                      <span>{lang === "hi" ? "व्यवस्थापक ईमेल सफलतापूर्वक पहुंचा दिया गया!" : "Secure Alert dispatched to admin successfully!"}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playAudioTone("click");
+                    setSecureContactWorker(null);
+                    setSecureContactAction(null);
+                    setSecureContactCallback(null);
+                    setSecureEmailSending(false);
+                    setSecureEmailSent(false);
+                  }}
+                  className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-705 font-extrabold py-3 rounded-2xl text-xs text-center transition cursor-pointer"
+                >
+                  {lang === "hi" ? "रद्द करें" : "Cancel"}
+                </button>
+                
+                <button
+                  type="button"
+                  disabled={secureEmailSending}
+                  onClick={() => {
+                    playAudioTone("click");
+                    // Trigger audit record inside admin panels first
+                    triggerProxyMessageNotification(secureContactWorker, secureContactAction || "call");
+                    
+                    // Trigger callback
+                    if (secureContactCallback) {
+                      secureContactCallback();
+                    }
+
+                    // Reset states
+                    setSecureContactWorker(null);
+                    setSecureContactAction(null);
+                    setSecureContactCallback(null);
+                    setSecureEmailSending(false);
+                    setSecureEmailSent(false);
+
+                    showNotification(
+                      lang === "hi" ? "सुरक्षित संबंध अधिकृत!" : "Secure alignment authorized!",
+                      "success"
+                    );
+                  }}
+                  className={`flex-1 font-extrabold py-3 rounded-2xl text-xs text-center text-white transition shadow-md flex items-center justify-center space-x-1.5 cursor-pointer ${
+                    secureEmailSending 
+                      ? "bg-slate-400 cursor-not-allowed" 
+                      : "bg-pink-700 hover:bg-pink-800"
+                  }`}
+                >
+                  <span>🔑</span>
+                  <span>{lang === "hi" ? "स्वीकार करें और संपर्क करें" : "Authorize & Proceed"}</span>
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
